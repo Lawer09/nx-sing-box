@@ -36,6 +36,7 @@ import (
 var _ adapter.SimpleLifecycle = (*Box)(nil)
 
 type Box struct {
+	ctx             context.Context
 	createdAt       time.Time
 	logFactory      log.Factory
 	logger          log.ContextLogger
@@ -199,11 +200,6 @@ func New(options Options) (*Box, error) {
 		return nil, E.Cause(err, "initialize router")
 	}
 	ntpOptions := common.PtrValueOrDefault(options.NTP)
-	var timeService *tls.TimeServiceWrapper
-	if ntpOptions.Enabled {
-		timeService = new(tls.TimeServiceWrapper)
-		service.MustRegister[ntp.TimeService](ctx, timeService)
-	}
 	for i, transportOptions := range dnsOptions.Servers {
 		var tag string
 		if transportOptions.Tag != "" {
@@ -366,7 +362,10 @@ func New(options Options) (*Box, error) {
 			service.MustRegister[adapter.V2RayServer](ctx, v2rayServer)
 		}
 	}
+	var timeService *tls.TimeServiceWrapper
 	if ntpOptions.Enabled {
+		timeService = new(tls.TimeServiceWrapper)
+		service.MustRegister[ntp.TimeService](ctx, timeService)
 		ntpDialer, err := dialer.New(ctx, ntpOptions.DialerOptions, ntpOptions.ServerIsDomain())
 		if err != nil {
 			return nil, E.Cause(err, "create NTP service")
@@ -383,6 +382,7 @@ func New(options Options) (*Box, error) {
 		internalServices = append(internalServices, adapter.NewLifecycleService(ntpService, "ntp service"))
 	}
 	return &Box{
+		ctx:             ctx,
 		network:         networkManager,
 		endpoint:        endpointManager,
 		inbound:         inboundManager,
@@ -558,4 +558,8 @@ func (s *Box) Endpoint() adapter.EndpointManager {
 
 func (s *Box) LogFactory() log.Factory {
 	return s.logFactory
+}
+
+func (s *Box) GetCtx() context.Context {
+	return s.ctx
 }
