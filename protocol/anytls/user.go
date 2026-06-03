@@ -9,10 +9,10 @@ import (
 
 func (h *Inbound) AddUsers(users []option.AnyTLSUser) error {
 	for _, user := range users {
-		h.uuidlist = append(h.uuidlist, user.Name)
+		h.uuidList = append(h.uuidList, user.Name)
 	}
-	userList := make([]anytls.User, len(h.uuidlist))
-	for i, uuid := range h.uuidlist {
+	userList := make([]anytls.User, len(h.uuidList))
+	for i, uuid := range h.uuidList {
 		userList[i] = anytls.User{Name: uuid, Password: uuid}
 	}
 	h.service.UpdateUsers(userList)
@@ -27,25 +27,25 @@ func (h *Inbound) DelUsers(names []string) error {
 	toDelete := make(map[string]struct{})
 	for _, name := range names {
 		toDelete[name] = struct{}{}
-		h.userconns.Range(func(key, value interface{}) bool {
+		h.userCons.Range(func(key, value interface{}) bool {
 			if value.(string) == name {
 				key.(net.Conn).Close()
-				h.userconns.Delete(key)
+				h.userCons.Delete(key)
 			}
 			return true
 		})
 	}
 
-	remaining := make([]string, 0, len(h.uuidlist))
-	for _, uuid := range h.uuidlist {
+	remaining := make([]string, 0, len(h.uuidList))
+	for _, uuid := range h.uuidList {
 		if _, found := toDelete[uuid]; !found {
 			remaining = append(remaining, uuid)
 		}
 	}
 
-	h.uuidlist = remaining
-	userList := make([]anytls.User, len(h.uuidlist))
-	for i, uuid := range h.uuidlist {
+	h.uuidList = remaining
+	userList := make([]anytls.User, len(h.uuidList))
+	for i, uuid := range h.uuidList {
 		userList[i] = anytls.User{Name: uuid, Password: uuid}
 	}
 	h.service.UpdateUsers(userList)
